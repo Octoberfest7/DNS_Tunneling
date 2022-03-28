@@ -278,10 +278,9 @@ Executing our beacon (more magic happened on the backend here to use DNS beacons
 
 ![image](https://user-images.githubusercontent.com/91164728/160337563-c5653c35-1399-46d0-aff5-6a814bcb684c.png)
 
-We do get one alert for "SuspiciousFileDrop" behavior... more to explore.  But all alerts relating to TXT records or Certutil to decode an executable are gone. 
+We do get one alert for "SuspiciousFileDrop" behavior however it resolved with "No threads found"... more to explore.  But all alerts relating to TXT records or Certutil to decode an executable are gone. 
 
-![image](https://user-images.githubusercontent.com/91164728/160337834-23a54030-1b17-449d-99da-d2bcfc2a19e7.png)
-
+![image](https://user-images.githubusercontent.com/91164728/160339982-7fd18f61-067b-46aa-8aca-6b0552cc1003.png)
 
 # Closing thoughts
 
