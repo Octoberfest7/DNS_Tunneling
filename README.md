@@ -158,7 +158,7 @@ $results="";for($num = 1; $num -le 1623 ; $num++){$temp = nslookup -type=TXT "$n
 
 Upon running our command we see all of the DNS requests on our CoreDNS server:
 
-![image](https://user-images.githubusercontent.com/91164728/160325408-7b37d162-e637-4d97-b27d-8862bb5e4069.png)
+This image will be replaced soon!
 
 And on our client we see that the Certutil command succeeded:
 
