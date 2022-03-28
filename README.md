@@ -136,17 +136,17 @@ Looking at the produced zonefile we see our TXT records:
 
 ![image](https://user-images.githubusercontent.com/91164728/160323451-3527df06-36a1-484e-9f85-a3f36031b4e7.png)
 
-Note the number on the far left hand side of each TXT record; this denotes the subdomain.  To test that our records work we will run nslookup for TXT records belonging to 1.dns....com:
-
-![image](https://user-images.githubusercontent.com/91164728/160323616-d5522549-f00a-4deb-9f51-c11d88c0ce29.png)
-
-There is our TXT record!
+Note the number on the far left hand side of each TXT record; this denotes the subdomain. 
 
 Now that our zonefile is created we will need to copy it to our DNS server and then serve it.  I used CoreDNS for this: https://github.com/coredns/coredns
 
 ![image](https://user-images.githubusercontent.com/91164728/160324503-beaaca28-df15-4f33-b107-3c848abee162.png)
 
-This shows that I am accepting queries for dns.edu....com on port 53.  In the Corefile I have specified the zonefile created in the previous step to serve records from.
+This shows that I am accepting queries for dns.edu....com on port 53.  In the Corefile I have specified the zonefile created in the previous step to serve records from. To test that our records work we will run nslookup for TXT records belonging to 1.dns....com:
+
+![image](https://user-images.githubusercontent.com/91164728/160323616-d5522549-f00a-4deb-9f51-c11d88c0ce29.png)
+
+There is our TXT record!
 
 ## Attack!
 
