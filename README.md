@@ -313,10 +313,10 @@ We will again turn our payload to hex and then use the python3 script to place t
 On the client side we will need to modify our powershell command in order to fix the magic bytes and render our executable functional again.  As mentioned, in an effort to evade the SuspiciousFileDrop alert from MDE we will first write our "txt" file to disk, and then pull it back into memory using get-content.  The relevent modification and addendum to our powershell command is:
 
 ```powershell
-$bytes | set-content -encoding byte .\custombeacon.txt;[byte[]]$readfile = get-content .\out.txt -encoding byte -raw;$readfile[0x00] = 0x4D;$readfile[0x01] = 0x5A;$readfile | set-content .\new.exe -encoding byte
+$bytes | set-content -encoding byte .\out.txt;[byte[]]$readfile = get-content .\out.txt -encoding byte -raw;$readfile[0x00] = 0x4D;$readfile[0x01] = 0x5A;$readfile | set-content .\new.exe -encoding byte
 ```
 
-In this command we first write our downloaded payload(with .txt magic bytes) to disk as custombeacon.txt, then read it into a byte array $readfile after which the first and second bytes are set to 0x4D and 0x5A respectively, restoring the MZ header to our payload.  $readfile is then piped to set-content to write our functional payload to disk as new.exe.
+In this command we first write our downloaded payload(with .txt magic bytes) to disk as out.txt, then read it into a byte array $readfile after which the first and second bytes are set to 0x4D and 0x5A respectively, restoring the MZ header to our payload.  $readfile is then piped to set-content to write our functional payload to disk as new.exe.
 
 Let give this a shot in our MDE VM (note that the command looks a little different, this will be addressed in the next section):
 
