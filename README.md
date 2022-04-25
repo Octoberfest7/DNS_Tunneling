@@ -13,17 +13,13 @@ The DNS record type of choice for DNS tunneling has historically been TXT.  This
 
 ## What is Constrained Language Mode?
 
-Constrained Language Mode (CLM) is a restrictive language mode for Powershell which greatly reduces the capabilities and allowed functionality of Powershell.  As a short list, .NET, COM objects, and attacker favorites like (new-object net.webclient).downloadstring... are unavailable.  This link provides more information:
-
-https://devblogs.microsoft.com/powershell/powershell-constrained-language-mode/
-
-Organizations will put this policy in force for normal users as part of attack surface reduction rules.  It in effect just makes our lives harder as attackers.
+Constrained Language Mode (CLM) is a restrictive language mode for Powershell which greatly reduces the capabilities and allowed functionality of Powershell.  As a short list, .NET, COM objects, and attacker favorites like (new-object net.webclient).downloadstring... are unavailable.  [This](https://devblogs.microsoft.com/powershell/powershell-constrained-language-mode/) link provides more information. Organizations will put this policy in force for normal users as part of attack surface reduction rules.  It in effect just makes our lives harder as attackers.
 
 ## What do DNS records look like?
 
 Most should be at least cursorily familiar with DNS from use of tools like Nslookup.  But at a basic level, the client sends a query and the DNS server returns an answer to that query.  There are several different kinds of DNS records: CNAME, A, AAAA, TXT, MX, and NS just to name a few.  Each of these records can store and return different information.  These records are configured in a Zonefile, which is served by a DNS server.
 
-An example zonefile is shown here (https://help.dyn.com/how-to-format-a-zone-file/):
+An example zonefile is shown [here](https://help.dyn.com/how-to-format-a-zone-file/):
 
 ```
 $ORIGIN example.com.
@@ -64,11 +60,7 @@ This means that any queries made for "dns.edu....com" will be directed to "ns1.e
 
 ## Finding a client side tool
 
-My quest began with a simple google search for "powershell dns module" which returned this link:
-
-https://docs.microsoft.com/en-us/powershell/module/dnsclient/?view=windowsserver2022-ps
-
-Of particular interest was the Resolve-DnsName command.  It appears to be basically a powershell implementation of the well-known Nslookup.exe binary. Note that specific types of records can be requested:
+My quest began with a simple google search for "powershell dns module" which returned [this](https://docs.microsoft.com/en-us/powershell/module/dnsclient/?view=windowsserver2022-ps) link. Of particular interest was the Resolve-DnsName command.  It appears to be basically a powershell implementation of the well-known Nslookup.exe binary. Note that specific types of records can be requested:
 
 ![image](https://user-images.githubusercontent.com/91164728/160312929-cb297543-b9f3-4947-bdca-feef9062e1ef.png)
 
@@ -138,7 +130,7 @@ Looking at the produced zonefile we see our TXT records:
 
 Note the number on the far left hand side of each TXT record; this denotes the subdomain. 
 
-Now that our zonefile is created we will need to copy it to our DNS server and then serve it.  I used CoreDNS for this: https://github.com/coredns/coredns
+Now that our zonefile is created we will need to copy it to our DNS server and then serve it.  I used [CoreDNS](https://github.com/coredns/coredns) for this: 
 
 ![image](https://user-images.githubusercontent.com/91164728/160324503-beaaca28-df15-4f33-b107-3c848abee162.png)
 
@@ -199,7 +191,7 @@ It also isn't all that surprising that certutil was flagged decoding our payload
 
 ## Off the beaten path
 
-I decided to try and use MX records instead of TXT records to smuggle the payload. This blog post (https://devblogs.microsoft.com/oldnewthing/20120412-00/?p=7873) notes that the maximum length of a valid DNS name is 255 characters
+I decided to try and use MX records instead of TXT records to smuggle the payload. [This](https://devblogs.microsoft.com/oldnewthing/20120412-00/?p=7873) blog post  notes that the maximum length of a valid DNS name is 255 characters
 ```
 (63 letters).(63 letters).(63 letters).(62 letters)
 ```
@@ -209,7 +201,7 @@ There is however a problem.  When it comes to DNS records, only TXT and SPF (a t
 
 We are forced to either find another record type that is case-sensitive and compatible with Base64, or we must find a different encoding language that Windows/powershell in CLM is natively able to decode.  
 
-After some research I found that Powershell is able to turn hex into binary without the use of .NET: https://stackoverflow.com/questions/64925863/how-to-use-powershell-to-convert-hex-string-to-bin
+After some [research](https://stackoverflow.com/questions/64925863/how-to-use-powershell-to-convert-hex-string-to-bin) I found that Powershell is able to turn hex into binary without the use of .NET: 
 
 ```powershell
 $hex = Get-Content -Path "C:\blah\exe-bank.txt" -Raw
