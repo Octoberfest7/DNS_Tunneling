@@ -11,7 +11,7 @@ def chunkstring(string, length):
 
 if len(sys.argv) != 4: #print help if no arguments given
 	print("""\nGenerates a DNS zonefile containing MX records which serve  executable file in hex form.
-Usage: python3 """ + os.path.basename(__file__) + """ <domain to query> <nameserver for domain> 
+Usage: python3 """ + os.path.basename(__file__) + """ <payload.exe> <domain to query> <nameserver for domain> 
 	
 <domain to query>: The domain nslookup will run against
 <nameserver for domain>: The nameserver that serves <domain to query>
